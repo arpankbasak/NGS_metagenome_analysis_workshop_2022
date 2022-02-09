@@ -1,5 +1,5 @@
 # Workshop title – “*Finding who is out there*: Next generation sequencing and metagenome analysis”
-Date: 24th to 27th February 2022
+Date: 2^nd to 5^th March 2022 \n
 Venue: Online **TBA**
 
 ## Workshop content:
