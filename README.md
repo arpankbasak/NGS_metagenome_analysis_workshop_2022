@@ -4,7 +4,7 @@ Venue: Online at MS Teams
 
 ## Workshop content:
 
-[Day 1 – Lecture on traditional and modern tools for investigating habitat (1 h)](./1_FWOT_agt_Day1/index.html)
+[Day 1 – Lecture on traditional and modern tools for investigating habitat (1 h)](./1_FWOT_agt_Day1.pdf)
 
 We will discuss about investigating habitat using traditional microbiology and new NGS approch. Within NGS approach we will be discussing about amplicon sequencing or meta-barcoding and hot-gun metagenomics approach.
 
