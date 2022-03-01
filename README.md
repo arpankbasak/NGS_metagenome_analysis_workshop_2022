@@ -1,31 +1,31 @@
 # Workshop title – “*Finding who is out there*: Next generation sequencing and metagenome analysis”
 Date: 2<sup>nd</sup> to 5<sup>th</sup> March 2022 <br/>
-Venue: Online **TBA**
+Venue: Online at MS Teams
 
 ## Workshop content:
 
-Day 1 – Lecture on traditional and modern tools for investigating habitat (1 h)
+[Day 1 – Lecture on traditional and modern tools for investigating habitat (1 h)](./1_FWOT_agt_Day1/index.html)
 
-Details.. slides to be uploaded
+We will discuss about investigating habitat using traditional microbiology and new NGS approch. Within NGS approach we will be discussing about amplicon sequencing or meta-barcoding and hot-gun metagenomics approach.
 
-Day 2 – Practical session on amplicon sequencing data processing and analysis (3 h)
+[Day 2 – Practical session on amplicon sequencing data processing and analysis (3 h)](./rmd_files/2_AmpliconSeq.html)
 
-Details.. tutorial to be uploaded
+In this session we will be operating on hands-on training with the 16s amplicon sequencing data obtained from mice. We will investigate the gut microhabitat using DADA2 pipeline.
 
 Day 3 – Lecture on upcoming tools in investigating the micro and macro habitat (1 h)
 
-Details.. slides to be uploaded
+In this session we will shortly discuss about the meta-omics approach and new upcoming tools ot investigate the holobiome and their function.
 
 Day 4 – Practical session on shot-gun metagenome sequencing data processing and analysis (3 h)
 
-Details.. tutorial to be uploaded
+We will decipher the taxonomic classification of antarctic and arctic micorobiota using Kraken and other tools.
 
 ## Learning objectives:
 1.	This workshop aims to address the power and limitation of NGS based analysis
 2.	Attendees will be learning the approach of processing NGS data from sequencing output and data analysis strategies.
 3.	Data visualization and interpretation of metagenome analysis.
 4.	Attendees will get an idea of the NGS tools used in the metagenome analysis.
-5.	Attendees will be able to have a hands-on experience in both amplicon sequencing and shot-gun sequencing data using QIIME and DADA2 pipeline.
+5.	Attendees will be able to have a hands-on experience in both amplicon sequencing and shot-gun sequencing data using DADA2 pipeline.
 
 ## Pre-requisites:
 1.	Laptop and un-interrupted internet.
