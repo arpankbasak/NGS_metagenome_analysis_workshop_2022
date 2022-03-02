@@ -8,13 +8,13 @@ Venue: Online at MS Teams
 
 We will discuss about investigating habitat using traditional microbiology and new NGS approch. Within NGS approach we will be discussing about amplicon sequencing or meta-barcoding and hot-gun metagenomics approach.
 
-[Day 2 – Practical session on amplicon sequencing data processing and analysis (3 h)](./rmd_files/2_AmpliconSeq.html)
-
-In this session we will be operating on hands-on training with the 16s amplicon sequencing data obtained from mice. We will investigate the gut microhabitat using DADA2 pipeline.
-
-Day 3 – Lecture on upcoming tools in investigating the micro and macro habitat (1 h)
+Day 2 – Lecture on upcoming tools in investigating the micro and macro habitat (1 h)
 
 In this session we will shortly discuss about the meta-omics approach and new upcoming tools ot investigate the holobiome and their function.
+
+[Day 3 – Practical session on amplicon sequencing data processing and analysis (3 h)](./rmd_files/2_AmpliconSeq.html)
+
+In this session we will be operating on hands-on training with the 16s amplicon sequencing data obtained from mice. We will investigate the gut microhabitat using DADA2 pipeline.
 
 Day 4 – Practical session on shot-gun metagenome sequencing data processing and analysis (3 h)
 
