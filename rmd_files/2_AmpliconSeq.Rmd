@@ -1,0 +1,402 @@
+---
+title: "Day 2"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::material:
+    highlight: espresso
+    lightbox: TRUE
+    gallery: TRUE
+    background: cyan
+---
+
+```{r setup, include=FALSE}
+## Global options
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+> NOTE: Under construction
+> NOTE: This is subset of unpublished data, the labels are scrambled. Please do not intend to publish this.
+
+# What this tutorial is about
+
+In this study we are investigating an experimental perturbation performed on mice by implementing drugs for a period of 72 h. A control group was also introduced with same food but without the drug component. The experiment was performed on both male and female mice. The gut was dissected and __digesta__ samples were collected from __stomach__ and __distal gut__. Our interest is to investigate who is out there in these gut sections. Since there is a homogenity in the samples, that means our samples are digesta, we may take the amplicon based approach to identify the microbial signatures. This is a subset of the data collected from 300 samples and in this case we are only studying bacterial population within the gut. To identify the bacterial population we have sequenced the 16S rRNA gene from the variable region V5-V7, and followed the amplicon sequencing approach. The data obtained from Illumina miseq includes barcodes, forward and reverse reads.
+
+## Objectives
+
+1. Who is out there? - What is the `composition of bacteria` in the `gut regions`?
+2. What are the effect of `drugs` in the microbiota composition when the introduced into the diet?
+3. Does the effect of the `drug` consistent in all the `gut region`?
+
+We want to quantify whether there is difference in the microbiome composition in the between the gut regions. We estimate the degree of difference by analyzing the diversity within and across these microsites. Next, we ask which microbe may cause this difference. Then we understand the causal link between the variation.
+
+# Amplicon sequencing approach
+
+We are investigating bacterial composition by meta-barcoding approach. We identifying the species by understanding the differences in the 16s rRNA gene V3-V4 region. In this study we use primers to capture this region in a PCR reaction. Here we have only implemented reverse barcodes. But ideally, both reverse and forward barcodes should be used in order to have more samples in a sequencing run. Ideally you are looking for 50 million reads per run. That should cover 50k times (forward and reverse read counts) for 1000 samples. You may sacrifice some reads to pool more samples in your sequencing run, but only if you have homogeinity on your samples.
+
+# Setup your environment
+
+This is the first and one of the most crucial steps, __installing dependencies__. The dependencies for pre-processing is included in the `amplicon_demultiplexing.yml` script and the dependencies for DADA2 pipeline is in `amplicon_dada2.yml`. It will be better to install [anaconda](https://docs.anaconda.com/anaconda/install/index.html) or [miniconda](https://docs.conda.io/en/latest/miniconda.html)
+
+```
+
+conda env create --file amplicon_demultiplexing.yml
+conda env create --file amplicon_dada2.yml
+
+```
+
+# Pre-processing workflow
+
+Now that we have our dependencies loaded, we proceed with the pre-processing workflow. One of the approaches is to split the samples based on the barcoded primers. This approach splits the libraries on the basis of the sample identities. The [qiime](http://qiime.org/scripts/index.html) toolbox has a prepared script that is still widely used to conduct such measures. Please note that we are not using the QIIME pipeline as the QIIME pipeline has been upgraded to QIIME2. We are only using their prepared scripts to fetch what is needed. We will use `split_sequence_file_on_sample_ids.py` script to perform this task, for details follow the [description](http://qiime.org/scripts/split_sequence_file_on_sample_ids.html)
+
+## Demultiplexing and split lilbraries based on sample IDs
+
+Here our goal is to demultiplex the reads such that we can reconstruct the amplicon region. We split the sequence clusters obtained for each samples identified by their unique barcodes.
+```
+conda activate amplicon_demultiplexing
+
+mkdir ./preprocess
+mkdir ./preprocess/dada2
+
+# Unzip the files
+
+gzip -d -c ./raw/Day2_data/001_forward_reads.fastq.gz > \
+        ./preprocess/001_forward_reads.fastq
+gzip -d -c ./raw/Day2_data/001_reverse_reads.fastq.gz > \
+        ./preprocess/001_reverse_reads.fastq
+gzip -d -c ./raw/Day2_data/001_barcodes.fastq.gz > \
+        ./preprocess/barcodes.fastq
+
+# Make a wordcount for reading the barcode length golay_12
+bc_len=`less ./raw/Day2_data/001_map.txt |tail -n1 | awk '{print $2}' |wc -c`
+
+split_libraries_fastq.py -i ./preprocess/001_forward_reads.fastq \
+ -b ./preprocess/barcodes.fastq \
+ -m ./raw/Day2_data/001_map.txt \
+ --rev_comp_mapping_barcodes \
+ --barcode_type $bc_len \
+ --max_barcode_errors 0 \
+ -q 0 -r 300 -p 0.01 -n 300 \
+ --phred_offset 33 \
+ -o ./preprocess/001_forward \
+
+split_libraries_fastq.py -i ./preprocess/001_reverse_reads.fastq \
+ -b ./preprocess/barcodes.fastq \
+ -m ./raw/Day2_data/001_map.txt \
+ --rev_comp_mapping_barcodes \
+ --barcode_type $bc_len \
+ --max_barcode_errors 0 \
+ -q 0 -r 300 -p 0.01 -n 300 \
+ --phred_offset 33 \
+ -o ./preprocess/001_reverse \
+
+```
+
+
+After splitting the libraries take this step to cluster the sequences for each samples. This makes downstream, analysis easier and in your control. to achieve this we will implement the `split_sequence_file_on_sample_ids.py` from the QIIME pipeline. 
+
+```
+
+split_sequence_file_on_sample_ids.py --file_type fastq \
+	        -i ./preprocess/001_forward/seqs.fna \
+	        -o ./preprocess/001_forward/out
+
+
+split_sequence_file_on_sample_ids.py --file_type fastq \
+	        -i ./preprocess/001_reverse/seqs.fna \
+	        -o ./preprocess/001_reverse/out
+
+conda deactivate amplicon_demultiplexing
+	        
+```
+
+## Quality check and assurance
+
+Now, we can implement DADA2 pipeline which is faster and has a better resolution in quantifying the amplicon sequences.
+
+# Implement `DADA2` pipeline
+
+Once we have done pre-processing we proceed with the [DADA2 pipeline](https://benjjneb.github.io/dada2/tutorial_1_8.html) that yields most from the sequencing data. Open R or RStudio and let it handle the sequences. There are some prerequisites.
+
+```
+
+# install.packages("DADA2") # avoid if operating within conda environment
+require(DADA2)
+
+```
+
+## Make the best of your amplicons
+
+### Import your forward and reverse reads from the samples
+
+In this segment you obtain the sequences 
+
+```
+
+rm(list = ls())
+require(dada2)
+
+path <- "./preprocess/"
+output <- "./preprocess/dada2/"
+
+fwd <- paste0(path, "/001_forward/out")
+rev <- paste0(path, "/001_reverse/out")
+
+fnFs <- sort(list.files(fwd, pattern=".fastq", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnFs), ".fastq"), `[`, 1)
+names(fnFs) <- sample.names
+
+fnRs <- sort(list.files(rev, pattern=".fastq", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnRs), ".fastq"), `[`, 1)
+names(fnRs) <- sample.names
+
+sample.names <- intersect(names(fnRs), names(fnFs))
+fnFs <- fnFs[sample.names]
+fnRs <- fnRs[sample.names]
+
+# Filtering the reads
+filtFs <- file.path(paste0(path, "_filtered"),
+                    paste0(sample.names, "_filtF.fastq.gz"))
+
+filtRs <- file.path(paste0(path, "_filtered"),
+                    paste0(sample.names, "_filtR.fastq.gz"))
+
+names(filtFs) <- sample.names
+names(filtRs) <- sample.names
+
+saveRDS(filtFs, paste0(output, "001_filtFs.rds"))
+saveRDS(filtRs, paste0(output, "001_filtRs.rds"))
+
+# Here you are filtering the low quality reads and trimming the sequences
+set.seed(1)
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, 
+	# truncLen=c(251,250),
+	# maxN=0, 
+	# maxEE=c(1,1),
+	# truncQ=1, 
+	matchIDs=TRUE,
+	# rm.phix=TRUE,
+	compress=TRUE, 
+	multithread=8)
+
+
+write.table(out, paste0(output, "filter.txt"), quote = F, sep = "\t")
+
+```
+
+### Remove the primer bias
+
+```
+
+filtFs <- filtFs[file.exists(filtFs)]
+filtRs <- filtRs[file.exists(filtRs)]
+
+errF <- learnErrors(filtFs, multithread=20, MAX_CONSIST = 20)
+errR <- learnErrors(filtRs, multithread=20, MAX_CONSIST = 20)
+
+# Save the errors in case you want to use it on a very large dataset
+saveRDS(errF, paste0(output, "errF.rds"))
+saveRDS(errR, paste0(output, "errR.rds"))
+
+# Check the error minimisation step
+p1 <- plotErrors(errF, nominalQ = TRUE)
+p2 <- plotErrors(errR, nominalQ = TRUE)
+
+ggsave(paste0(output, "errorF.pdf"), p1)
+ggsave(paste0(output, "errorR.pdf"), p2)
+
+# Conduct de-rplication for the reads
+filtFs <- derepFastq(filtFs, n = 1e+06)
+filtRs <- derepFastq(filtRs, n = 1e+06)
+
+# Finally use the DADA2 for denoising the primer errors
+dadaFs <- dada(filtFs, err = errF, multithread = 20, pool = TRUE)
+dadaRs <- dada(filtRs, err = errR, multithread = 20, pool = TRUE)
+
+saveRDS(dadaFs, paste0(output, "dadaFs.rds"))
+saveRDS(dadaRs, paste0(output, "dadaRs.rds"))
+
+
+```
+
+
+### Merge the paired reads
+
+```
+
+# At last you merge the reads such that you have the exact 16S targets that we can compare among the samples
+
+mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose = TRUE)
+saveRDS(mergers, paste0(output, "mergers.rds"))
+
+
+# Make the sequence table for further analysis
+
+seqtab <- makeSequenceTable(mergers, orderBy = "abundance")
+saveRDS(seqtab, paste0(output, "seqtab.rds"))
+
+
+```
+
+## Obtain amplicon sequence variants (ASVs)
+
+### Find chimeric sequences
+
+```
+
+seqtabs <- list.files(path, pattern = "seqtab.rds", full.names = TRUE)
+
+path <- list.dirs(path, full.names = T, recursive = F)
+path <- paste0(path, "/Bacteria/")
+seqtabs <- list.files(path, pattern = "seqtab.rds", full.names = TRUE)
+
+if (length(seqtabs) < 2) {
+    asv <- readRDS(seqtabs)
+} else {
+    asv <- mergeSequenceTables(tables = seqtabs, repeats = "sum",
+                               orderBy = "abundance")
+}
+## Remove chimeras
+asv.nochime <- removeBimeraDenovo(asv, method = "consensus",
+                                  multithread = 40, verbose = TRUE)
+dim(asv.nochime)
+sum(asv.nochime) / sum(asv)
+
+asv <- asv.nochime
+nc <- ncol(asv)
+map <- data.frame(ASV_ID = paste0("ASV_", seq(1 : nc)),
+                  Sequence = colnames(asv))
+
+```
+
+
+## Assign taxonomy by referring to databases
+
+After obtaining the ASVs we may ask which bacterial taxonomy do they belong to? In this case we have to refer to a database where there is a catalogue of speies identified from the 16S meta-barcode. There are list of databases among which we can choose and conclude our results.
+
+- [SILVA](https://www.arb-silva.de/no_cache/download/archive/release_138_1/Exports/)
+- [RDP](https://rdp.cme.msu.edu/misc/resources.jsp)
+- [GreenGenes](https://greengenes.secondgenome.com/?prefix=downloads/greengenes_database/gg_13_5/)
+
+Download the updated database and store them in a local directory, such that you can use them for taxonomic assignment.
+
+### Obtain the database locations
+
+You can download the `.fa.gz` files through `ftp` connection using `wget` command.
+
+### Predict the ASVs for given taxonomy
+
+In this step we use the referece databse from SILVA to predict the given amplicon to have a taxonomic signature. SILVA is a 16s rRNA gene repository, that can be used to predict the taxonmic signatures from the set of amlplicons. The unassigned sequences can be further used to predict into other database to have a comprehensive idea on the taxonomic signature from the given sample.
+
+```
+
+# Assign taxonomy
+taxtrain <- paste0("./Day2_data/silva_nr_v138_train_set.fa.gz")
+taxa <- assignTaxonomy(asv, taxtrain, multithread = 40)
+rownames(taxa) <- map$ASV_ID[match(rownames(taxa), map$Sequence)]
+
+# Summarise the taxonomy in one table
+write.table(taxa, paste0(output, "/ASV_taxonomy_silva.txt"),
+            quote = F, sep = "\t")
+
+colnames(asv) <- map$ASV_ID[match(colnames(asv), map$Sequence)]
+asv <- t(asv)
+stat <- data.frame(Sample_ID = colnames(asv),
+                   Present = colSums(asv > 0),
+                   Abundance = colSums(asv))
+
+write.table(asv, paste0(output, "/ASV_table.txt"),
+            quote = F, sep = "\t")
+write.table(stat, paste0(output, "/ASV_lib_stat.txt"),
+            quote = F, sep = "\t", row.names = F)
+write.table(map, paste0(output, "/ASV_map.txt"),
+            quote = F, sep = "\t", row.names = F, col.names = F)
+
+```
+
+
+# Downstream data analysis and visualization
+
+In this segment you should have the AVS table, taxonomy table and the sample metadata. In case the pre-processing steps take longer time than usual, I have the ASV table where we can perform our analysis on.
+
+## Pre-requisites for interpreting the data
+
+In R or R-studio environment the package `tidyverse` includes every tiny packages required for data summary. To perform multi-variate analysis the package `vegan` is very useful. This package was designed to perform statistics on datasets comic from ecological disciplines. This means any "abundance" type dataset can be used as an input to use the tools in the `vegan` package.
+
+```
+install.packages("tidyverse")
+install.packages("vegan")
+
+require(tidyverse)
+require(vegan)
+
+# Remove the ASVs belonging to chloroplast or mitochondria
+
+# Remove the samples with lower depth ~1000 reads per sample
+
+# Remove the ASVs with abundance less than 0.1%
+
+# Obtain a matrix of relative proportion
+
+```
+
+
+## Collapsing the ASVs to a lower taxonomy level
+
+## Diversity analysis
+
+In this segment we identify the composition of the microbiome. The diversity of the samples and amplicons within the sample. Across sample diversity is also termed as \beta-diversity, in this case we implement caculate a square matrix from the ASV table and obtain a similarity or disimillarity matrix. 
+
+### Relative abundance of microbiome
+
+```{r analysis_composition}
+
+# Obtain rank abundance plot or the relative abundance plot
+
+```
+
+
+### $\alpha$-diversity analysis or within sample variations
+
+This is estimated by calculating the diversity of the observed amplicons within the sample. A crucial step called the rarefaction must be taken into account here to overcome the saturation point of the sequences.
+
+
+```
+
+# Estimate the stauration point by rarefaction
+
+# Calculate the alpha diversity
+
+
+
+```
+
+
+### $\beta$-diversity analysis or microbiome composition 
+
+This is estimated by calculating the distance betwenn the samples. Most popular distances used are Eucledian, manhattan, Canberra and minkowski. Since, our datasets correspndes to microhabit with specific ecological insights. we use an ecological index Bray-curtis dissimilarity index. We can also implement, Jaccard or perhaps phylogenetic distances like UniFrac or unweighted UniFrac.
+
+```
+
+
+
+```
+
+
+### Constrained ordination by permutation based multivariate analysis of variance (PERMANOVA)
+
+Constrained ordination by detrending involves removal of the random factors from the dataset and identifying the variance explained by the fixed factor or your factor of interest in the dataset. Here, you may want to minimise the effect of random factors by implementing the `Condition()` function in the formula. The fixed terms will be projected in the CPCoa analysis and its axes.
+
+```
+
+```
+
+## Differential analysis
+
+Differential analysis or the \delta comparison is essential in tha case where you have an effect that needs to be normalised. In case of bacground or treatment or a specific condtion, you can always use genralised linear model or non parametric measure to identify which ASV or taxonomy (if used in a collapsed table) that is different from the control. You reduce the background in this case and the effect is the proportion of microbes (their abundance) either increased or decreased. This is similar to moderated-t-test, as microbiome data is zero-inflated poisson distribution, you have to nonrmalise by library size, and make log^2^ transformation followed by scaling.
+
+```
+
+```
+
+
+
